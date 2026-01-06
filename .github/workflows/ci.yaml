@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start PostgreSQL containers
+        run: |
+          # Primary PostgreSQL (MD5 auth) - port 5432
+          docker run -d --name postgres-5432 \
+            --network host \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_INITDB_ARGS="--auth-local=md5 --auth-host=md5 --auth=md5" \
+            postgres:14 \
+            postgres -p 5432 -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=100000
+
+          # SCRAM PostgreSQL instances
+          docker run -d --name postgres-7432 \
+            --network host \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_INITDB_ARGS="--auth-local=scram-sha-256 --auth-host=scram-sha-256 --auth=scram-sha-256" \
+            postgres:14 \
+            postgres -p 7432 -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=100000
+
+          docker run -d --name postgres-8432 \
+            --network host \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_INITDB_ARGS="--auth-local=scram-sha-256 --auth-host=scram-sha-256 --auth=scram-sha-256" \
+            postgres:14 \
+            postgres -p 8432 -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=100000
+
+          docker run -d --name postgres-9432 \
+            --network host \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_INITDB_ARGS="--auth-local=scram-sha-256 --auth-host=scram-sha-256 --auth=scram-sha-256" \
+            postgres:14 \
+            postgres -p 9432 -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=100000
+
+          # Additional MD5 PostgreSQL - port 10432
+          docker run -d --name postgres-10432 \
+            --network host \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_INITDB_ARGS="--auth-local=md5 --auth-host=md5 --auth=md5" \
+            postgres:14 \
+            postgres -p 10432 -c shared_preload_libraries=pg_stat_statements
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for port in 5432 7432 8432 9432 10432; do
+            echo "Waiting for PostgreSQL on port $port..."
+            for i in {1..30}; do
+              if pg_isready -h 127.0.0.1 -p $port -U postgres; then
+                echo "PostgreSQL on port $port is ready"
+                break
+              fi
+              if [ $i -eq 30 ]; then
+                echo "PostgreSQL on port $port failed to start"
+                docker logs postgres-$port
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Lint (rustfmt)
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            ghcr.io/postgresml/pgcat-ci:latest \
+            bash -c "rustup default stable && cargo fmt --check"
+
+      - name: Lint (clippy)
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            ghcr.io/postgresml/pgcat-ci:latest \
+            bash -c "cargo clippy --all --all-targets"
+
+      - name: Build
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            ghcr.io/postgresml/pgcat-ci:latest \
+            bash -c "cargo build"
+
+      - name: Unit tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            ghcr.io/postgresml/pgcat-ci:latest \
+            bash -c "cargo test"
+
+      - name: Integration tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            ghcr.io/postgresml/pgcat-ci:latest \
+            bash -c "bash .circleci/run_tests.sh"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop postgres-5432 postgres-7432 postgres-8432 postgres-9432 postgres-10432 || true
+          docker rm postgres-5432 postgres-7432 postgres-8432 postgres-9432 postgres-10432 || true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
