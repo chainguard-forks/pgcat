@@ -1,4 +1,4 @@
-FROM rust:1.81.0-slim-bookworm 
+FROM rust:1.81.0-slim-bookworm@sha256:f9fb6bdb0483de4ade93b262a3f6cf8c2985fca1d34784914bbcabd5a34d3197 
 
 COPY --from=sclevine/yj /bin/yj /bin/yj
 RUN /bin/yj -h
