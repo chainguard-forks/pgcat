@@ -5,6 +5,17 @@
     <img src="https://img.shields.io/discord/1013868243036930099" alt="Join our Discord!" />
 </a>
 
+> [!IMPORTANT]
+>
+> This is a supported replacement of the original [postgresml/pgcat](https://github.com/postgresml/pgcat) repository.
+>
+> Community contributions are not being accepted at this time. The documentation has been carried over directly from the original repository and may not reflect recent changes.
+>
+> We will make a best-effort attempt to address publicly known security vulnerabilities, including CVEs in dependencies and certain source code vulnerabilities when remediation can be achieved safely and with minimal risk. If mitigating a vulnerability would require extensive code changes (for example, adapting to a new API or significant refactoring), we will generally not make that change in order to avoid introducing regressions.
+>
+> Interested in a CVE-free container image of this project? [Contact Chainguard](https://www.chainguard.dev/contact).
+---
+
 PostgreSQL pooler and proxy (like PgBouncer) with support for sharding, load balancing, failover and mirroring.
 
 ## Features
