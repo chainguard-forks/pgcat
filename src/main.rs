@@ -24,6 +24,7 @@ extern crate async_trait;
 extern crate bb8;
 extern crate bytes;
 extern crate exitcode;
+extern crate hickory_resolver;
 extern crate log;
 extern crate md5;
 extern crate num_cpus;
@@ -35,7 +36,6 @@ extern crate sqlparser;
 extern crate tokio;
 extern crate tokio_rustls;
 extern crate toml;
-extern crate trust_dns_resolver;
 
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
