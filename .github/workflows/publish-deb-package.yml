@@ -8,6 +8,9 @@ on:
     inputs:
       packageVersion:
         default: "1.1.2-dev1"
+permissions:
+  contents: read
+
 jobs:
   build:
     strategy:
@@ -18,7 +21,12 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     - name: Set package version
       if: github.event_name == 'push'  # For push event
       run: |
@@ -27,7 +35,7 @@ jobs:
     - name: Set package version (manual dispatch)
       if: github.event_name == 'workflow_dispatch'  # For manual dispatch
       run: echo "packageVersion=${{ github.event.inputs.packageVersion }}" >> "$GITHUB_ENV"
-    - uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
       with:
         toolchain: stable
     - name: Install dependencies

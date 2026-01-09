@@ -1,4 +1,4 @@
-FROM rust:bullseye
+FROM rust:bullseye@sha256:182c38f1049c4348a0286392d817d400a6cdb51eebb479d446cd6286bbe6e758
 
 # Dependencies
 COPY --from=sclevine/yj /bin/yj /bin/yj
